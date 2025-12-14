@@ -1,0 +1,7 @@
+{
+  "name": "Hitori - 独旅",
+  "description": "A gentle, minimalist travel companion for the solo traveler. Features itinerary management, safety info, memos, and mood tracking with a calm Japanese aesthetic.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}

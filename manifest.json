@@ -1,0 +1,16 @@
+{
+  "name": "Hitori - 独旅",
+  "short_name": "Hitori",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#FDFCF8",
+  "theme_color": "#FDFCF8",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
