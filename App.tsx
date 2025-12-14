@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Navigation from './components/Navigation';
 import ItineraryView from './views/ItineraryView';
 import MemoView from './views/MemoView';
@@ -6,7 +6,10 @@ import SafetyView from './views/SafetyView';
 import MoodView from './views/MoodView';
 import { ViewState, Trip, DayItinerary, MemoItem, SafetyData, MoodEntry } from './types';
 
-// --- Initial Data ---
+// Storage Key
+const STORAGE_KEY = 'hitori_app_data_v1';
+
+// --- Initial Data (Fallbacks) ---
 const INITIAL_TRIPS: Trip[] = [
   { id: 't1', name: '春の京都獨旅', startDate: '2024-04-10', endDate: '2024-04-15' },
   { id: 't2', name: '首爾散策', startDate: '2024-09-20', endDate: '2024-09-24' }
@@ -71,16 +74,47 @@ const INITIAL_MOODS: MoodEntry[] = [
   { id: 'm1', date: '2024-04-10', mood: 'HAPPY', note: '飛機餐意外地好吃，順利抵達。' },
 ];
 
+const INITIAL_HEADER = { title: '我的旅程', subtitle: '每一段獨旅，都是與自己的對話。' };
+
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<ViewState>(ViewState.ITINERARY);
   
-  // --- States ---
-  const [appHeader, setAppHeader] = useState({ title: '我的旅程', subtitle: '每一段獨旅，都是與自己的對話。' });
-  const [trips, setTrips] = useState<Trip[]>(INITIAL_TRIPS);
-  const [itineraryData, setItineraryData] = useState<Record<string, DayItinerary[]>>(INITIAL_ITINERARY_DATA);
-  const [memos, setMemos] = useState<MemoItem[]>(INITIAL_MEMOS);
-  const [safetyData, setSafetyData] = useState<SafetyData>(INITIAL_SAFETY);
-  const [moods, setMoods] = useState<MoodEntry[]>(INITIAL_MOODS);
+  // Helper to load state from localStorage or fallback
+  const loadState = <T,>(key: string, fallback: T): T => {
+    if (typeof window === 'undefined') return fallback;
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return parsed[key] !== undefined ? parsed[key] : fallback;
+      }
+    } catch (e) {
+      console.error('Failed to load local storage data', e);
+    }
+    return fallback;
+  };
+
+  // --- States (Lazy Initialization) ---
+  const [appHeader, setAppHeader] = useState(() => loadState('appHeader', INITIAL_HEADER));
+  const [trips, setTrips] = useState<Trip[]>(() => loadState('trips', INITIAL_TRIPS));
+  const [itineraryData, setItineraryData] = useState<Record<string, DayItinerary[]>>(() => loadState('itineraryData', INITIAL_ITINERARY_DATA));
+  const [memos, setMemos] = useState<MemoItem[]>(() => loadState('memos', INITIAL_MEMOS));
+  const [safetyData, setSafetyData] = useState<SafetyData>(() => loadState('safetyData', INITIAL_SAFETY));
+  const [moods, setMoods] = useState<MoodEntry[]>(() => loadState('moods', INITIAL_MOODS));
+
+  // --- Effect: Auto-save to LocalStorage ---
+  useEffect(() => {
+    const dataToSave = {
+      appHeader,
+      trips,
+      itineraryData,
+      memos,
+      safetyData,
+      moods,
+      lastSaved: new Date().toISOString()
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+  }, [appHeader, trips, itineraryData, memos, safetyData, moods]);
 
   // --- Handlers: App Header ---
   const handleUpdateAppHeader = (title: string, subtitle: string) => {
