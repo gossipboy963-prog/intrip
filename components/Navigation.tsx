@@ -1,5 +1,5 @@
 import React from 'react';
-import { Calendar, BookOpen, ShieldCheck, MapPin, Smile } from 'lucide-react';
+import { Calendar, BookOpen, ShieldCheck, Smile } from 'lucide-react';
 import { ViewState } from '../types';
 
 interface NavigationProps {
@@ -12,13 +12,12 @@ const Navigation: React.FC<NavigationProps> = ({ currentView, setView }) => {
     { view: ViewState.ITINERARY, icon: Calendar, label: '行程' },
     { view: ViewState.MEMO, icon: BookOpen, label: '隨筆' },
     { view: ViewState.SAFETY, icon: ShieldCheck, label: '安心' },
-    { view: ViewState.MAP, icon: MapPin, label: '探索' },
     { view: ViewState.MOOD, icon: Smile, label: '心晴' },
   ];
 
   return (
     <div className="fixed bottom-0 left-0 right-0 bg-hitori-bg/90 backdrop-blur-md border-t border-hitori-line pb-safe pt-2 px-6 shadow-[0_-4px_20px_rgba(0,0,0,0.02)] z-50">
-      <div className="flex justify-between items-center max-w-md mx-auto h-16">
+      <div className="flex justify-around items-center max-w-md mx-auto h-16">
         {navItems.map((item) => {
           const isActive = currentView === item.view;
           return (

@@ -2,7 +2,6 @@ export enum ViewState {
   ITINERARY = 'ITINERARY',
   MEMO = 'MEMO',
   SAFETY = 'SAFETY',
-  MAP = 'MAP',
   MOOD = 'MOOD'
 }
 
@@ -11,7 +10,7 @@ export interface Trip {
   name: string;
   startDate: string; // YYYY-MM-DD
   endDate: string;   // YYYY-MM-DD
-  status: 'PLANNING' | 'ONGOING' | 'COMPLETED';
+  // Status is now calculated dynamically, removing manual field
 }
 
 export interface ItineraryItem {

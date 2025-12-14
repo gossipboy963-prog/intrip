@@ -3,14 +3,13 @@ import Navigation from './components/Navigation';
 import ItineraryView from './views/ItineraryView';
 import MemoView from './views/MemoView';
 import SafetyView from './views/SafetyView';
-import MapView from './views/MapView';
 import MoodView from './views/MoodView';
 import { ViewState, Trip, DayItinerary, MemoItem, SafetyData, MoodEntry } from './types';
 
 // --- Initial Data ---
 const INITIAL_TRIPS: Trip[] = [
-  { id: 't1', name: '春の京都獨旅', startDate: '2024-04-10', endDate: '2024-04-15', status: 'ONGOING' },
-  { id: 't2', name: '首爾散策', startDate: '2024-09-20', endDate: '2024-09-24', status: 'PLANNING' }
+  { id: 't1', name: '春の京都獨旅', startDate: '2024-04-10', endDate: '2024-04-15' },
+  { id: 't2', name: '首爾散策', startDate: '2024-09-20', endDate: '2024-09-24' }
 ];
 
 const INITIAL_ITINERARY_DATA: Record<string, DayItinerary[]> = {
@@ -121,6 +120,52 @@ const App: React.FC = () => {
   const handleUpdateMood = (mood: MoodEntry) => setMoods(moods.map(m => m.id === mood.id ? mood : m));
   const handleDeleteMood = (id: string) => setMoods(moods.filter(m => m.id !== id));
 
+  // --- Handlers: Data Backup ---
+  const handleExportData = () => {
+    const data = {
+        trips,
+        itineraryData,
+        memos,
+        safetyData,
+        moods,
+        exportDate: new Date().toISOString(),
+        appVersion: '1.0'
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `hitori_backup_${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportData = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const json = JSON.parse(e.target?.result as string);
+            // Basic validation
+            if (json.trips && json.itineraryData) {
+                setTrips(json.trips);
+                setItineraryData(json.itineraryData);
+                if (json.memos) setMemos(json.memos);
+                if (json.safetyData) setSafetyData(json.safetyData);
+                if (json.moods) setMoods(json.moods);
+                alert('資料還原成功。');
+            } else {
+                alert('檔案格式錯誤，無法讀取。');
+            }
+        } catch (error) {
+            console.error(error);
+            alert('檔案讀取失敗。');
+        }
+    };
+    reader.readAsText(file);
+  };
+
   // --- View Rendering ---
   const renderView = () => {
     switch (currentView) {
@@ -133,6 +178,8 @@ const App: React.FC = () => {
             onUpdateTrip={handleUpdateTrip}
             onDeleteTrip={handleDeleteTrip}
             onUpdateItinerary={handleUpdateItinerary}
+            onExport={handleExportData}
+            onImport={handleImportData}
           />
         );
       case ViewState.MEMO:
@@ -151,8 +198,6 @@ const App: React.FC = () => {
             onUpdate={handleUpdateSafety}
           />
         );
-      case ViewState.MAP:
-        return <MapView />;
       case ViewState.MOOD:
         return (
           <MoodView 

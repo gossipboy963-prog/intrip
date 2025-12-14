@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { MapPin, Clock, Plus, ChevronLeft, Calendar as CalendarIcon, Edit2, Trash2, X } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { MapPin, Clock, Plus, ChevronLeft, Calendar as CalendarIcon, Edit2, Trash2, X, Archive, Download, Upload } from 'lucide-react';
 import { DayItinerary, ItineraryItem, Trip } from '../types';
 
 interface ItineraryViewProps {
@@ -9,7 +9,27 @@ interface ItineraryViewProps {
   onUpdateTrip: (trip: Trip) => void;
   onDeleteTrip: (tripId: string) => void;
   onUpdateItinerary: (tripId: string, days: DayItinerary[]) => void;
+  onExport: () => void;
+  onImport: (file: File) => void;
 }
+
+// Helper to determine trip status
+const getTripStatus = (startDate: string, endDate: string) => {
+  const now = new Date();
+  // Reset time to midnight for accurate date comparison
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  
+  // Adjust dates to avoid timezone issues when parsing YYYY-MM-DD
+  // Simple comparison using ISO strings is often safer for display logic
+  const todayStr = now.toISOString().split('T')[0];
+  
+  if (todayStr < startDate) return 'PLANNING';
+  if (todayStr > endDate) return 'COMPLETED';
+  return 'ONGOING';
+};
 
 const ItineraryView: React.FC<ItineraryViewProps> = ({ 
   trips, 
@@ -17,7 +37,9 @@ const ItineraryView: React.FC<ItineraryViewProps> = ({
   onAddTrip, 
   onUpdateTrip, 
   onDeleteTrip,
-  onUpdateItinerary 
+  onUpdateItinerary,
+  onExport,
+  onImport
 }) => {
   const [selectedTripId, setSelectedTripId] = useState<string | null>(null);
   
@@ -31,6 +53,8 @@ const ItineraryView: React.FC<ItineraryViewProps> = ({
           trips={trips} 
           onSelectTrip={handleSelectTrip} 
           onAddTrip={onAddTrip}
+          onExport={onExport}
+          onImport={onImport}
         />
       ) : (
         <TripDetailView 
@@ -54,12 +78,17 @@ const ItineraryView: React.FC<ItineraryViewProps> = ({
 const TripListView: React.FC<{ 
   trips: Trip[], 
   onSelectTrip: (id: string) => void,
-  onAddTrip: (trip: Trip) => void 
-}> = ({ trips, onSelectTrip, onAddTrip }) => {
+  onAddTrip: (trip: Trip) => void,
+  onExport: () => void,
+  onImport: (file: File) => void
+}> = ({ trips, onSelectTrip, onAddTrip, onExport, onImport }) => {
   const [isCreating, setIsCreating] = useState(false);
   const [newTripName, setNewTripName] = useState('');
   const [newTripStart, setNewTripStart] = useState('');
   const [newTripEnd, setNewTripEnd] = useState('');
+  
+  const [showSettings, setShowSettings] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleCreate = () => {
     if (!newTripName || !newTripStart) return;
@@ -67,8 +96,7 @@ const TripListView: React.FC<{
       id: Date.now().toString(),
       name: newTripName,
       startDate: newTripStart,
-      endDate: newTripEnd || newTripStart,
-      status: 'PLANNING'
+      endDate: newTripEnd || newTripStart
     };
     onAddTrip(newTrip);
     setIsCreating(false);
@@ -76,42 +104,80 @@ const TripListView: React.FC<{
     setNewTripStart('');
     setNewTripEnd('');
   };
+  
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      if (window.confirm('匯入將會覆蓋目前的資料，確定要繼續嗎？')) {
+        onImport(e.target.files[0]);
+      }
+      setShowSettings(false);
+    }
+    // Reset input
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
 
   return (
     <>
-      <div className="mb-8">
-        <h1 className="text-2xl font-serif text-hitori-text font-bold tracking-wide mb-2">我的旅程</h1>
-        <p className="text-sm text-hitori-muted font-light">每一段獨旅，都是與自己的對話。</p>
+      <div className="flex justify-between items-start mb-8">
+        <div>
+          <h1 className="text-2xl font-serif text-hitori-text font-bold tracking-wide mb-2">我的旅程</h1>
+          <p className="text-sm text-hitori-muted font-light">每一段獨旅，都是與自己的對話。</p>
+        </div>
+        <div className="relative">
+            <button 
+                onClick={() => setShowSettings(!showSettings)} 
+                className="p-2 rounded-full text-hitori-muted hover:bg-stone-100 transition-colors"
+            >
+                <Archive size={20} />
+            </button>
+            {showSettings && (
+                <div className="absolute right-0 top-10 bg-white rounded-xl shadow-xl border border-hitori-line p-2 w-40 z-20 animate-in fade-in zoom-in duration-200">
+                    <button onClick={onExport} className="w-full text-left px-3 py-2 text-xs text-hitori-text hover:bg-hitori-bg rounded-lg flex items-center gap-2">
+                        <Download size={14} /> 備份資料
+                    </button>
+                    <button onClick={() => fileInputRef.current?.click()} className="w-full text-left px-3 py-2 text-xs text-hitori-text hover:bg-hitori-bg rounded-lg flex items-center gap-2">
+                        <Upload size={14} /> 匯入備份
+                    </button>
+                    <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json" className="hidden" />
+                </div>
+            )}
+        </div>
       </div>
 
       <div className="space-y-6">
-        {trips.map(trip => (
-          <div 
-            key={trip.id} 
-            onClick={() => onSelectTrip(trip.id)}
-            className="group relative bg-white p-6 rounded-2xl border border-hitori-line shadow-sm hover:shadow-md transition-all cursor-pointer overflow-hidden"
-          >
-            <div className="absolute top-0 right-0 w-24 h-24 bg-hitori-red/5 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110"></div>
-            <div className="relative z-10">
-              <div className="flex justify-between items-start mb-4">
-                <span className={`px-3 py-1 text-[10px] tracking-widest rounded-full border ${
-                  trip.status === 'ONGOING' ? 'bg-hitori-red text-white border-hitori-red' : 
-                  trip.status === 'COMPLETED' ? 'bg-hitori-line text-hitori-muted border-hitori-line' : 
-                  'bg-white text-hitori-muted border-hitori-muted/50'
-                }`}>
-                  {trip.status === 'ONGOING' ? '旅行中' : trip.status === 'PLANNING' ? '規劃中' : '已完成'}
-                </span>
-              </div>
-              <h3 className="text-xl font-serif font-bold text-hitori-text mb-2 group-hover:text-hitori-red transition-colors">
-                {trip.name}
-              </h3>
-              <div className="flex items-center text-hitori-muted text-xs font-mono space-x-2">
-                <CalendarIcon size={12} />
-                <span>{trip.startDate} ~ {trip.endDate}</span>
-              </div>
+        {trips.sort((a,b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime()).map(trip => {
+          const status = getTripStatus(trip.startDate, trip.endDate);
+          return (
+            <div 
+                key={trip.id} 
+                onClick={() => onSelectTrip(trip.id)}
+                className="group relative bg-white p-6 rounded-2xl border border-hitori-line shadow-sm hover:shadow-md transition-all cursor-pointer overflow-hidden"
+            >
+                <div className={`absolute top-0 right-0 w-24 h-24 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110 ${
+                    status === 'ONGOING' ? 'bg-hitori-red/5' : 
+                    status === 'COMPLETED' ? 'bg-stone-100' : 'bg-transparent'
+                }`}></div>
+                <div className="relative z-10">
+                <div className="flex justify-between items-start mb-4">
+                    <span className={`px-3 py-1 text-[10px] tracking-widest rounded-full border transition-colors ${
+                    status === 'ONGOING' ? 'bg-hitori-red text-white border-hitori-red shadow-sm shadow-hitori-red/20' : 
+                    status === 'COMPLETED' ? 'bg-stone-100 text-stone-400 border-stone-200' : 
+                    'bg-white text-hitori-muted border-hitori-muted/50'
+                    }`}>
+                    {status === 'ONGOING' ? '旅行中' : status === 'PLANNING' ? '規劃中' : '成回憶'}
+                    </span>
+                </div>
+                <h3 className={`text-xl font-serif font-bold mb-2 transition-colors ${status === 'COMPLETED' ? 'text-hitori-muted' : 'text-hitori-text group-hover:text-hitori-red'}`}>
+                    {trip.name}
+                </h3>
+                <div className="flex items-center text-hitori-muted text-xs font-mono space-x-2">
+                    <CalendarIcon size={12} />
+                    <span>{trip.startDate} ~ {trip.endDate}</span>
+                </div>
+                </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
         <button 
           onClick={() => setIsCreating(true)}
           className="w-full py-6 border-2 border-dashed border-hitori-line rounded-2xl text-hitori-muted/60 hover:text-hitori-red hover:border-hitori-red/30 hover:bg-hitori-red/5 transition-all flex flex-col items-center justify-center space-y-2"
@@ -165,6 +231,8 @@ const TripDetailView: React.FC<{
   }, [days, selectedDayId]);
 
   const currentDay = days.find(d => d.id === selectedDayId);
+  const tripStatus = getTripStatus(trip.startDate, trip.endDate);
+  const isCompleted = tripStatus === 'COMPLETED';
 
   const handleSaveItem = (dayId: string, item: ItineraryItem) => {
     const dayIndex = days.findIndex(d => d.id === dayId);
@@ -224,8 +292,11 @@ const TripDetailView: React.FC<{
           <ChevronLeft size={16} className="mr-1" /> 返回列表
         </button>
         <div className="flex justify-between items-start">
-          <div>
-            <h1 className="text-2xl font-serif text-hitori-text font-bold tracking-wide mb-1 flex items-center gap-2">{trip.name}</h1>
+          <div className={isCompleted ? 'opacity-70' : ''}>
+            <div className="flex items-center gap-2 mb-1">
+                <h1 className="text-2xl font-serif text-hitori-text font-bold tracking-wide">{trip.name}</h1>
+                {isCompleted && <span className="text-[10px] bg-stone-100 text-stone-500 px-2 py-0.5 rounded-full border border-stone-200">成回憶</span>}
+            </div>
             <p className="text-sm text-hitori-muted font-light">{trip.startDate} - {trip.endDate}</p>
           </div>
           <button onClick={() => setIsEditingTrip(true)} className="p-2 text-hitori-muted hover:text-hitori-red transition-colors bg-white rounded-full border border-hitori-line shadow-sm">
@@ -256,7 +327,7 @@ const TripDetailView: React.FC<{
       </div>
 
       {currentDay ? (
-        <div className="relative pl-4 border-l border-hitori-line space-y-8 pb-20">
+        <div className={`relative pl-4 border-l border-hitori-line space-y-8 pb-20 ${isCompleted ? 'grayscale-[0.5]' : ''}`}>
           {currentDay.items.map((item) => (
             <div key={item.id} className="relative group">
               <div className={`absolute -left-[21px] top-4 w-2.5 h-2.5 rounded-full border-2 transition-colors duration-300 ${item.isCompleted ? 'bg-hitori-line border-hitori-line' : 'bg-hitori-bg border-hitori-red'}`}></div>
