@@ -75,11 +75,17 @@ const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<ViewState>(ViewState.ITINERARY);
   
   // --- States ---
+  const [appHeader, setAppHeader] = useState({ title: '我的旅程', subtitle: '每一段獨旅，都是與自己的對話。' });
   const [trips, setTrips] = useState<Trip[]>(INITIAL_TRIPS);
   const [itineraryData, setItineraryData] = useState<Record<string, DayItinerary[]>>(INITIAL_ITINERARY_DATA);
   const [memos, setMemos] = useState<MemoItem[]>(INITIAL_MEMOS);
   const [safetyData, setSafetyData] = useState<SafetyData>(INITIAL_SAFETY);
   const [moods, setMoods] = useState<MoodEntry[]>(INITIAL_MOODS);
+
+  // --- Handlers: App Header ---
+  const handleUpdateAppHeader = (title: string, subtitle: string) => {
+    setAppHeader({ title, subtitle });
+  };
 
   // --- Handlers: Trip ---
   const handleAddTrip = (newTrip: Trip) => {
@@ -123,6 +129,7 @@ const App: React.FC = () => {
   // --- Handlers: Data Backup ---
   const handleExportData = () => {
     const data = {
+        appHeader,
         trips,
         itineraryData,
         memos,
@@ -149,6 +156,7 @@ const App: React.FC = () => {
             const json = JSON.parse(e.target?.result as string);
             // Basic validation
             if (json.trips && json.itineraryData) {
+                if (json.appHeader) setAppHeader(json.appHeader);
                 setTrips(json.trips);
                 setItineraryData(json.itineraryData);
                 if (json.memos) setMemos(json.memos);
@@ -180,6 +188,9 @@ const App: React.FC = () => {
             onUpdateItinerary={handleUpdateItinerary}
             onExport={handleExportData}
             onImport={handleImportData}
+            appTitle={appHeader.title}
+            appSubtitle={appHeader.subtitle}
+            onUpdateAppHeader={handleUpdateAppHeader}
           />
         );
       case ViewState.MEMO:

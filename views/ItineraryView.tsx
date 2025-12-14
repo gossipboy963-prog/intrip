@@ -11,6 +11,9 @@ interface ItineraryViewProps {
   onUpdateItinerary: (tripId: string, days: DayItinerary[]) => void;
   onExport: () => void;
   onImport: (file: File) => void;
+  appTitle: string;
+  appSubtitle: string;
+  onUpdateAppHeader: (title: string, subtitle: string) => void;
 }
 
 // Helper to determine trip status
@@ -39,7 +42,10 @@ const ItineraryView: React.FC<ItineraryViewProps> = ({
   onDeleteTrip,
   onUpdateItinerary,
   onExport,
-  onImport
+  onImport,
+  appTitle,
+  appSubtitle,
+  onUpdateAppHeader
 }) => {
   const [selectedTripId, setSelectedTripId] = useState<string | null>(null);
   
@@ -55,6 +61,9 @@ const ItineraryView: React.FC<ItineraryViewProps> = ({
           onAddTrip={onAddTrip}
           onExport={onExport}
           onImport={onImport}
+          appTitle={appTitle}
+          appSubtitle={appSubtitle}
+          onUpdateAppHeader={onUpdateAppHeader}
         />
       ) : (
         <TripDetailView 
@@ -80,8 +89,11 @@ const TripListView: React.FC<{
   onSelectTrip: (id: string) => void,
   onAddTrip: (trip: Trip) => void,
   onExport: () => void,
-  onImport: (file: File) => void
-}> = ({ trips, onSelectTrip, onAddTrip, onExport, onImport }) => {
+  onImport: (file: File) => void,
+  appTitle: string,
+  appSubtitle: string,
+  onUpdateAppHeader: (title: string, subtitle: string) => void
+}> = ({ trips, onSelectTrip, onAddTrip, onExport, onImport, appTitle, appSubtitle, onUpdateAppHeader }) => {
   const [isCreating, setIsCreating] = useState(false);
   const [newTripName, setNewTripName] = useState('');
   const [newTripStart, setNewTripStart] = useState('');
@@ -119,11 +131,23 @@ const TripListView: React.FC<{
   return (
     <>
       <div className="flex justify-between items-start mb-8">
-        <div>
-          <h1 className="text-2xl font-serif text-hitori-text font-bold tracking-wide mb-2">我的旅程</h1>
-          <p className="text-sm text-hitori-muted font-light">每一段獨旅，都是與自己的對話。</p>
+        <div className="flex-1 mr-4">
+          <input 
+            type="text" 
+            value={appTitle}
+            onChange={(e) => onUpdateAppHeader(e.target.value, appSubtitle)}
+            className="w-full text-2xl font-serif text-hitori-text font-bold tracking-wide mb-2 bg-transparent border-b border-transparent hover:border-hitori-line/50 focus:border-hitori-red focus:outline-none placeholder-hitori-muted/30 transition-colors"
+            placeholder="設定標題"
+          />
+          <input 
+            type="text" 
+            value={appSubtitle}
+            onChange={(e) => onUpdateAppHeader(appTitle, e.target.value)}
+            className="w-full text-sm text-hitori-muted font-light bg-transparent border-b border-transparent hover:border-hitori-line/50 focus:border-hitori-red focus:outline-none placeholder-hitori-muted/30 transition-colors"
+            placeholder="設定副標題"
+          />
         </div>
-        <div className="relative">
+        <div className="relative pt-1">
             <button 
                 onClick={() => setShowSettings(!showSettings)} 
                 className="p-2 rounded-full text-hitori-muted hover:bg-stone-100 transition-colors"
