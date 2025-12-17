@@ -309,6 +309,17 @@ const TripDetailView: React.FC<{
     setSelectedDayId(newDay.id);
   };
 
+  const handleDeleteDay = (dayId: string) => {
+    const dayToDelete = days.find(d => d.id === dayId);
+    if (window.confirm(`確定要刪除 ${dayToDelete?.dayLabel} (${dayToDelete?.date}) 嗎？此操作無法復原。`)) {
+        const newDays = days.filter(d => d.id !== dayId);
+        onUpdateDays(newDays);
+        if (selectedDayId === dayId) {
+            setSelectedDayId(newDays.length > 0 ? newDays[0].id : '');
+        }
+    }
+  };
+
   return (
     <div className="animate-in slide-in-from-right duration-300">
       <div className="mb-6">
@@ -406,6 +417,16 @@ const TripDetailView: React.FC<{
               <span>新增行程</span>
             </button>
           </div>
+
+          <div className="mt-12 mb-4 flex justify-center">
+            <button 
+                onClick={() => handleDeleteDay(currentDay.id)}
+                className="text-xs text-hitori-muted/30 hover:text-red-400 flex items-center space-x-1 transition-colors px-4 py-2 rounded-full hover:bg-red-50"
+            >
+                <Trash2 size={14} />
+                <span>刪除此日行程</span>
+            </button>
+         </div>
         </div>
       ) : (
         <div className="text-center text-hitori-muted py-10">請新增天數來開始規劃</div>
