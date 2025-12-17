@@ -384,10 +384,16 @@ const TripDetailView: React.FC<{
                   {item.title || item.location}
                 </h3>
                 
-                <div className="flex items-center text-xs text-hitori-muted mb-2 font-medium">
+                <a 
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.location)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="flex items-center text-xs text-hitori-muted mb-2 font-medium hover:text-hitori-red hover:underline transition-colors w-fit"
+                >
                     <MapPin size={12} className="mr-1" />
                     {item.location}
-                </div>
+                </a>
 
                 {item.note && (
                   <p className="text-sm text-hitori-muted leading-relaxed mb-4 whitespace-pre-line border-l-2 border-hitori-line pl-2 mt-2">
