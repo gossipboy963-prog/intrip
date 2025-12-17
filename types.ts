@@ -45,14 +45,20 @@ export interface SafetyContact {
   relation: string; // e.g., "Embassy", "Family"
 }
 
+export interface Accommodation {
+  id: string;
+  name: string;
+  address: string;
+  startDate: string; // YYYY-MM-DD
+  endDate: string;   // YYYY-MM-DD
+  checkInTime: string;
+  note: string;
+}
+
 export interface SafetyData {
   contacts: SafetyContact[];
   passportNumber: string;
-  accommodation: {
-    name: string;
-    address: string;
-    note: string;
-  };
+  accommodation: Accommodation[];
 }
 
 export interface MoodEntry {

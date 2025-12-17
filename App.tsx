@@ -63,11 +63,17 @@ const INITIAL_SAFETY: SafetyData = {
     { id: 'c2', name: '外交部駐日代表處', phone: '+81-3-3280-7811', relation: 'Official' }
   ],
   passportNumber: '312456789',
-  accommodation: {
-    name: 'Hotel Resol Kyoto',
-    address: '〒604-8033 京都府京都市中京区河原町通三条下る大黒町59-1',
-    note: 'check-in: 15:00'
-  }
+  accommodation: [
+    {
+      id: 'acc1',
+      name: 'Hotel Resol Kyoto',
+      address: '〒604-8033 京都府京都市中京区河原町通三条下る大黒町59-1',
+      startDate: '2024-04-10',
+      endDate: '2024-04-15',
+      checkInTime: '15:00',
+      note: '櫃檯在 2 樓'
+    }
+  ]
 };
 
 const INITIAL_MOODS: MoodEntry[] = [
@@ -99,7 +105,29 @@ const App: React.FC = () => {
   const [trips, setTrips] = useState<Trip[]>(() => loadState('trips', INITIAL_TRIPS));
   const [itineraryData, setItineraryData] = useState<Record<string, DayItinerary[]>>(() => loadState('itineraryData', INITIAL_ITINERARY_DATA));
   const [memos, setMemos] = useState<MemoItem[]>(() => loadState('memos', INITIAL_MEMOS));
-  const [safetyData, setSafetyData] = useState<SafetyData>(() => loadState('safetyData', INITIAL_SAFETY));
+  
+  // Custom loader for SafetyData to handle migration from single object to array
+  const [safetyData, setSafetyData] = useState<SafetyData>(() => {
+    const data = loadState('safetyData', INITIAL_SAFETY);
+    // Migration: If accommodation is an object (old format), convert to array
+    if (data.accommodation && !Array.isArray(data.accommodation)) {
+       const oldAcc = data.accommodation as any;
+       return {
+           ...data,
+           accommodation: [{
+               id: 'acc_migrated_' + Date.now(),
+               name: oldAcc.name || '',
+               address: oldAcc.address || '',
+               note: oldAcc.note || '',
+               startDate: '',
+               endDate: '',
+               checkInTime: ''
+           }]
+       };
+    }
+    return data;
+  });
+
   const [moods, setMoods] = useState<MoodEntry[]>(() => loadState('moods', INITIAL_MOODS));
 
   // --- Effect: Auto-save to LocalStorage ---
