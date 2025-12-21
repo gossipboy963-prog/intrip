@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { MapPin, Clock, Plus, ChevronLeft, Calendar as CalendarIcon, Edit2, Trash2, X, Archive, Download, Upload } from 'lucide-react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { MapPin, Clock, Plus, ChevronLeft, Calendar as CalendarIcon, Edit2, Trash2, X, Archive, Download, Upload, ArrowRight } from 'lucide-react';
 import { DayItinerary, ItineraryItem, Trip } from '../types';
 
 interface ItineraryViewProps {
@@ -19,14 +19,6 @@ interface ItineraryViewProps {
 // Helper to determine trip status
 const getTripStatus = (startDate: string, endDate: string) => {
   const now = new Date();
-  // Reset time to midnight for accurate date comparison
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-  
-  // Adjust dates to avoid timezone issues when parsing YYYY-MM-DD
-  // Simple comparison using ISO strings is often safer for display logic
   const todayStr = now.toISOString().split('T')[0];
   
   if (todayStr < startDate) return 'PLANNING';
@@ -124,7 +116,6 @@ const TripListView: React.FC<{
       }
       setShowSettings(false);
     }
-    // Reset input
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -248,6 +239,13 @@ const TripDetailView: React.FC<{
   const [isEditingTrip, setIsEditingTrip] = useState(false);
   const [editingItem, setEditingItem] = useState<{ dayId: string, item: ItineraryItem | null } | null>(null);
   
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 60000);
+    return () => clearInterval(timer);
+  }, []);
+
   useEffect(() => {
     if (days.length > 0 && !days.find(d => d.id === selectedDayId)) {
       setSelectedDayId(days[0].id);
@@ -257,6 +255,52 @@ const TripDetailView: React.FC<{
   const currentDay = days.find(d => d.id === selectedDayId);
   const tripStatus = getTripStatus(trip.startDate, trip.endDate);
   const isCompleted = tripStatus === 'COMPLETED';
+
+  // Calculate "Now" and "Next" based on real time
+  const realTimeStatus = useMemo(() => {
+    const todayStr = currentTime.toISOString().split('T')[0];
+    const timeStr = currentTime.toTimeString().slice(0, 5); // HH:mm
+    
+    const todayItinerary = days.find(d => d.date === todayStr);
+    if (!todayItinerary || todayItinerary.items.length === 0) return null;
+
+    const sortedItems = [...todayItinerary.items].sort((a, b) => a.time.localeCompare(b.time));
+    
+    let currentIndex = -1;
+    for (let i = sortedItems.length - 1; i >= 0; i--) {
+      if (sortedItems[i].time <= timeStr) {
+        currentIndex = i;
+        break;
+      }
+    }
+
+    const currentItem = currentIndex !== -1 ? sortedItems[currentIndex] : null;
+    const nextItem = currentIndex < sortedItems.length - 1 ? sortedItems[currentIndex + 1] : null;
+
+    return { 
+      dayId: todayItinerary.id,
+      currentItem, 
+      nextItem 
+    };
+  }, [days, currentTime]);
+
+  const jumpToItem = (itemId: string, dayId: string) => {
+    // If not on the correct day, switch first
+    if (selectedDayId !== dayId) {
+      setSelectedDayId(dayId);
+    }
+    
+    // Give react time to render the tab if it was switched
+    setTimeout(() => {
+      const element = document.getElementById(`item-${itemId}`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Optional: briefly flash the item to highlight it
+        element.classList.add('ring-2', 'ring-hitori-red', 'ring-opacity-50');
+        setTimeout(() => element.classList.remove('ring-2', 'ring-hitori-red', 'ring-opacity-50'), 2000);
+      }
+    }, selectedDayId !== dayId ? 100 : 0);
+  };
 
   const handleSaveItem = (dayId: string, item: ItineraryItem) => {
     const dayIndex = days.findIndex(d => d.id === dayId);
@@ -326,7 +370,7 @@ const TripDetailView: React.FC<{
         <button onClick={onBack} className="flex items-center text-hitori-muted hover:text-hitori-text transition-colors mb-4 text-sm">
           <ChevronLeft size={16} className="mr-1" /> 返回列表
         </button>
-        <div className="flex justify-between items-start">
+        <div className="flex justify-between items-start mb-6">
           <div className={isCompleted ? 'opacity-70' : ''}>
             <div className="flex items-center gap-2 mb-1">
                 <h1 className="text-2xl font-serif text-hitori-text font-bold tracking-wide">{trip.name}</h1>
@@ -338,6 +382,55 @@ const TripDetailView: React.FC<{
             <Edit2 size={16} />
           </button>
         </div>
+
+        {/* Real-time Status Card (Now & Next) */}
+        {!isCompleted && realTimeStatus && (
+          <div className="bg-white rounded-2xl border border-hitori-line shadow-sm mb-8 relative overflow-hidden group">
+            <div className="absolute top-0 left-0 w-1 h-full bg-hitori-red"></div>
+            
+            {/* Current Item Section */}
+            <div 
+              onClick={() => realTimeStatus.currentItem && jumpToItem(realTimeStatus.currentItem.id, realTimeStatus.dayId)}
+              className="p-5 cursor-pointer active:bg-hitori-bg transition-colors"
+            >
+              <div className="flex justify-between items-start mb-3">
+                <span className="text-[10px] font-bold text-hitori-red tracking-widest bg-hitori-red-light px-2 py-0.5 rounded">NOW 行程中</span>
+                <span className="text-[10px] font-mono text-hitori-muted">{currentTime.toTimeString().slice(0, 5)}</span>
+              </div>
+              
+              <div className="mb-1">
+                {realTimeStatus.currentItem ? (
+                  <>
+                    <h3 className="text-lg font-serif font-bold text-hitori-text mb-1">{realTimeStatus.currentItem.title}</h3>
+                    <div className="flex items-center text-xs text-hitori-muted">
+                      <MapPin size={12} className="mr-1" />
+                      {realTimeStatus.currentItem.location}
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-sm text-hitori-muted italic">今日行程尚未開始</p>
+                )}
+              </div>
+            </div>
+
+            {/* Next Item Section */}
+            <div 
+              onClick={() => realTimeStatus.nextItem && jumpToItem(realTimeStatus.nextItem.id, realTimeStatus.dayId)}
+              className="px-5 py-3 border-t border-hitori-line/50 cursor-pointer hover:bg-hitori-bg active:bg-stone-100 transition-colors"
+            >
+              {realTimeStatus.nextItem ? (
+                <div className="flex items-center text-xs text-hitori-muted font-light group-hover:text-hitori-text transition-colors">
+                  <ArrowRight size={12} className="mr-2 text-hitori-red/50" />
+                  <span className="mr-1">稍後：</span>
+                  <span className="font-medium mr-2">{realTimeStatus.nextItem.time}</span>
+                  <span className="truncate">{realTimeStatus.nextItem.title}</span>
+                </div>
+              ) : (
+                <p className="text-[10px] text-stone-300 text-center">今日後續無行程，祝有個美好的夜晚</p>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="flex space-x-4 overflow-x-auto no-scrollbar mb-8 pb-2">
@@ -364,7 +457,7 @@ const TripDetailView: React.FC<{
       {currentDay ? (
         <div className={`relative pl-4 border-l border-hitori-line space-y-8 pb-20 ${isCompleted ? 'grayscale-[0.5]' : ''}`}>
           {currentDay.items.map((item) => (
-            <div key={item.id} className="relative group">
+            <div key={item.id} id={`item-${item.id}`} className="relative group transition-all duration-300 rounded-2xl scroll-mt-24">
               <div className={`absolute -left-[21px] top-4 w-2.5 h-2.5 rounded-full border-2 transition-colors duration-300 ${item.isCompleted ? 'bg-hitori-line border-hitori-line' : 'bg-hitori-bg border-hitori-red'}`}></div>
               <div 
                 onClick={() => setEditingItem({ dayId: currentDay.id, item })}
